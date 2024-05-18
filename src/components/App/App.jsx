@@ -1,5 +1,6 @@
 import css from "./App.module.css";
 import { useState, useEffect } from "react";
+import axios from "axios";
 import SearchBar from "../SearchBar/SearchBar";
 import ImageGallery from "../ImageGallery/ImageGallery";
 import Loader from "../Loader/Loader";
@@ -29,10 +30,18 @@ const App = () => {
     setIsLoading(true);
     setError(null);
     try {
-      const response = await fetch(
-        `https://api.unsplash.com/search/photos?query=${query}&page=${page}&per_page=12&client_id=_VPAkdyHqSXp0JM7CXaTNNE5bIxFPBiO4XuY7ibcLWc`
+      const response = await axios.get(
+        "https://api.unsplash.com/search/photos",
+        {
+          params: {
+            query: query,
+            page: page,
+            per_page: 12,
+            client_id: "_VPAkdyHqSXp0JM7CXaTNNE5bIxFPBiO4XuY7ibcLWc",
+          },
+        }
       );
-      const data = await response.json();
+      const data = response.data;
       if (page === 1) {
         setImages(data.results);
       } else {
