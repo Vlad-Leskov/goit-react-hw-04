@@ -1,53 +1,84 @@
 import css from "./App.module.css";
 import { useState, useEffect } from "react";
-import ContactList from "../ContactList/ContactList";
-import SearchBox from "../SearchBox/SearchBox";
-import ContactForm from "../ContactForm/ContactForm";
+import SearchBar from "../SearchBar/SearchBar";
+import ImageGallery from "../ImageGallery/ImageGallery";
+import Loader from "../Loader/Loader";
+import ErrorMessage from "../ErrorMessage/ErrorMessage";
+import LoadMoreBtn from "../LoadMoreBtn/LoadMoreBtn";
+import ImageModal from "../ImageModal/ImageModal";
+import { Toaster } from "react-hot-toast";
+import Modal from "react-modal";
+
+Modal.setAppElement("#root");
 
 const App = () => {
-  const initialContacts = () => {
-    const storedContacts = JSON.parse(localStorage.getItem("contacts"));
-    return storedContacts
-      ? storedContacts
-      : [
-          { id: "id-1", name: "Rosie Simpson", number: "459-12-56" },
-          { id: "id-2", name: "Hermione Kline", number: "443-89-12" },
-          { id: "id-3", name: "Eden Clements", number: "645-17-79" },
-          { id: "id-4", name: "Annie Copeland", number: "227-91-26" },
-        ];
-  };
-
-  const [contacts, setContacts] = useState(initialContacts);
-  const [searchTerm, setSearchTerm] = useState("");
+  const [images, setImages] = useState([]);
+  const [query, setQuery] = useState("");
+  const [page, setPage] = useState(1);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState(null);
+  const [modalImage, setModalImage] = useState(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
 
   useEffect(() => {
-    localStorage.setItem("contacts", JSON.stringify(contacts));
-  }, [contacts]);
+    if (!query) return;
+    fetchImages();
+  }, [query, page]);
 
-  const handleSearch = (event) => {
-    setSearchTerm(event.target.value);
+  const fetchImages = async () => {
+    setIsLoading(true);
+    setError(null);
+    try {
+      const response = await fetch(
+        `https://api.unsplash.com/search/photos?query=${query}&page=${page}&per_page=12&client_id=_VPAkdyHqSXp0JM7CXaTNNE5bIxFPBiO4XuY7ibcLWc`
+      );
+      const data = await response.json();
+      if (page === 1) {
+        setImages(data.results);
+      } else {
+        setImages((prevImages) => [...prevImages, ...data.results]);
+      }
+    } catch (error) {
+      setError("Something went wrong. Please try again.");
+    } finally {
+      setIsLoading(false);
+    }
   };
 
-  const handleAddContact = (newContact) => {
-    setContacts((prevContacts) => [...prevContacts, newContact]);
+  const handleSearchSubmit = (query) => {
+    setQuery(query);
+    setPage(1);
   };
 
-  const handleDeleteContact = (id) => {
-    setContacts((prevContacts) =>
-      prevContacts.filter((contact) => contact.id !== id)
-    );
+  const handleLoadMore = () => {
+    setPage((prevPage) => prevPage + 1);
   };
 
-  const filteredContacts = contacts.filter((contact) =>
-    contact.name.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const openModal = (image) => {
+    setModalImage(image);
+    setIsModalOpen(true);
+  };
+
+  const closeModal = () => {
+    setModalImage(null);
+    setIsModalOpen(false);
+  };
 
   return (
     <div className={css.container}>
-      <h1>Phonebook</h1>
-      <ContactForm onSubmit={handleAddContact} />
-      <SearchBox value={searchTerm} onChange={handleSearch} />
-      <ContactList contacts={filteredContacts} onDelete={handleDeleteContact} />
+      <Toaster />
+      <SearchBar onSubmit={handleSearchSubmit} />
+      {error && <ErrorMessage message={error} />}
+      <ImageGallery images={images} onClick={openModal} />
+      {isLoading && <Loader />}
+      {images.length > 0 && !isLoading && (
+        <LoadMoreBtn onClick={handleLoadMore} />
+      )}
+      <ImageModal
+        isOpen={isModalOpen}
+        onClose={closeModal}
+        image={modalImage}
+      />
     </div>
   );
 };
